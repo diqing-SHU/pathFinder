@@ -16,6 +16,12 @@ class thisScene extends Phaser.Scene {
     // Game.player  => this.gamePlayer
     // Game.marker  => this.gameMarker
     // Game.finder  => this.gameFinder
+    // Initializing the pathfinder
+    this.gameFinder = new easystarjs.js();
+    this.gameCam = null;
+    this.gamePlayer = null;
+    this.gameMap = null;
+    this.gameMarker = null;
   }
 
   
@@ -27,16 +33,58 @@ class thisScene extends Phaser.Scene {
   }
 
   create(){
-    // Handles the clicks on the map to make the character move
-    this.input.on('pointerup',this.handleClick);
+    const moveCharacter = (path) => {
+      if (!this.gameMap||!this.gamePlayer) {
+        return
+      }
+      // Sets up a list of tweens, one for each tile to walk, that will be chained by the timeline
+      var tweens = [];
+      // skip starting index to animate
+      for(var i = 1; i < path.length; i++){
+          tweens.push({
+              targets: this.gamePlayer,
+              x: {value: path[i].x*this.gameMap.tileWidth, duration: 200},
+              y: {value: path[i].y*this.gameMap.tileHeight, duration: 200}
+          });
+      }
+  
+      this.tweens.timeline({
+          tweens: tweens
+      });
+    };
 
+    const handleClick = (pointer) => {
+      if (!this.gameCam || !this.gameFinder) {
+        return
+      }
+      var x = this.gameCam.scrollX + pointer.x;
+      var y = this.gameCam.scrollY + pointer.y;
+      var toX = Math.floor(x/32);
+      var toY = Math.floor(y/32);
+      var fromX = Math.floor(this.gamePlayer.x/32);
+      var fromY = Math.floor(this.gamePlayer.y/32);
+      console.log('going from ('+fromX+','+fromY+') to ('+toX+','+toY+')');
+  
+      this.gameFinder.findPath(fromX, fromY, toX, toY, function( path ) {
+          if (path === null) {
+              console.warn("Path was not found.");
+          } else {
+              console.log(path);
+              moveCharacter(path);
+          }
+      });
+      this.gameFinder.calculate(); // don't forget, otherwise nothing happens
+    };
+    // setup cam
     this.gameCam = this.cameras.main;
-    this.gameCam.setBounds(0, 0, 20*32, 20*32);
-
+    // this.gameCam.setBounds(0, 0, 20*32, 20*32);
+    this.gameCam.removeBounds();
+    
+    // setup player
     var phaserGuy = this.add.image(32,32,'phaserguy');
     phaserGuy.setDepth(1);
     phaserGuy.setOrigin(0,0.5);
-    this.gameCam.startFollow(phaserGuy);
+    // this.gameCam.startFollow(phaserGuy);
     this.gamePlayer = phaserGuy;
 
     // Display map
@@ -52,8 +100,6 @@ class thisScene extends Phaser.Scene {
     this.gameMarker.strokeRect(0, 0, this.gameMap.tileWidth, this.gameMap.tileHeight);
 
     // ### Pathfinding stuff ###
-    // Initializing the pathfinder
-    this.gameFinder = new easystarjs.js();
 
     // We create the 2D array representing all the tiles of our map
     var grid = [];
@@ -84,9 +130,14 @@ class thisScene extends Phaser.Scene {
         if(properties[i].cost) this.gameFinder.setTileCost(i+1, properties[i].cost); // If there is a cost attached to the tile, let's register it
     }
     this.gameFinder.setAcceptableTiles(acceptableTiles);
+    
+    // Handles the clicks on the map to make the character move
+    this.input.on('pointerup', handleClick);
   };
 
   update(){
+    // console.log('updatingggggg');
+    // console.log(this.gameMap);
     if (!this.gameMap) {
       return;
     }
@@ -103,6 +154,9 @@ class thisScene extends Phaser.Scene {
 
   checkCollision(x,y){
     if (!this.gameMap || !this.gameMap.getTileAt(x, y)) {
+      console.log('!this.gameMap || !this.gameMap.getTileAt(x, y)');
+      console.log(this.gameMap);
+      console.log(this.gameMap.getTileAt(x, y));
       return false;
     }
     var tile = this.gameMap.getTileAt(x, y);
@@ -111,55 +165,16 @@ class thisScene extends Phaser.Scene {
 
   getTileID(x,y){
     if (!this.gameMap) {
+      console.log('!this.gameMap');
+      console.log(this.gameMap);
       return -1;
     }
     var tile = this.gameMap.getTileAt(x, y);
     return tile.index;
   };
 
-  handleClick(pointer){
-    if (!this.gameMap || !this.gameFinder) {
-      return
-    }
-    var x = this.gameCam.scrollX + pointer.x;
-    var y = this.gameCam.scrollY + pointer.y;
-    var toX = Math.floor(x/32);
-    var toY = Math.floor(y/32);
-    var fromX = Math.floor(this.gamePlayer.x/32);
-    var fromY = Math.floor(this.gamePlayer.y/32);
-    console.log('going from ('+fromX+','+fromY+') to ('+toX+','+toY+')');
+  
 
-    this.gameFinder.findPath(fromX, fromY, toX, toY, function( path ) {
-        if (path === null) {
-            console.warn("Path was not found.");
-        } else {
-            console.log(path);
-            this.moveCharacter(path);
-        }
-    });
-    this.gameFinder.calculate(); // don't forget, otherwise nothing happens
-  };
-
-  moveCharacter(path){
-    if (!this.gameMap) {
-      return
-    }
-    // Sets up a list of tweens, one for each tile to walk, that will be chained by the timeline
-    var tweens = [];
-    for(var i = 0; i < path.length-1; i++){
-        var ex = path[i+1].x;
-        var ey = path[i+1].y;
-        tweens.push({
-            targets: this.gamePlayer,
-            x: {value: ex*this.gameMap.tileWidth, duration: 200},
-            y: {value: ey*this.gameMap.tileHeight, duration: 200}
-        });
-    }
-
-    this.scene.tweens.timeline({
-        tweens: tweens
-    });
-  };
 }
 export default thisScene;
 

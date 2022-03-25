@@ -7,8 +7,11 @@ import GameScene from './game';
 // import InstructionsScene from './scenes/instructionsScene';
 const config = {
   type: Phaser.AUTO,
-  width: window.innerWidth,
-  height: window.innerHeight - 5,
+  // NOTE: use fix size to start
+  width: 20*32,
+  height: 20*32,
+  // width: window.innerWidth,
+  // height: window.innerHeight - 5,
   parent: 'game',
   scene: [
     GameScene,
