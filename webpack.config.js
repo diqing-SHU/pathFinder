@@ -20,6 +20,10 @@ module.exports = {
           'html-loader',
         ],
       },
+      { 
+        test: /\.ts[x]?$/,
+        loader: "ts-loader" 
+      },
       {
         type: 'javascript/auto',
         test: /\.json$/,
