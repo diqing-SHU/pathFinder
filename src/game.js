@@ -3,6 +3,7 @@ import tileset from './assets/gridtiles.png';
 import map from './assets/map.json';
 import phaserguy from './assets/phaserguy.png';
 import easystarjs from 'easystarjs';
+import BFS from './algorithms/bfs';
 
 class thisScene extends Phaser.Scene {
   constructor() {
@@ -17,7 +18,8 @@ class thisScene extends Phaser.Scene {
     // Game.marker  => this.gameMarker
     // Game.finder  => this.gameFinder
     // Initializing the pathfinder
-    this.gameFinder = new easystarjs.js();
+    // this.gameFinder = new easystarjs.js();
+    this.gameFinder = new BFS();
     this.gameCam = null;
     this.gamePlayer = null;
     this.gameMap = null;
