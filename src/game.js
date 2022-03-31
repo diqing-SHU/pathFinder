@@ -53,8 +53,8 @@ class thisScene extends Phaser.Scene {
       });
     };
 
-    // tweens draw out the checked tiles
-    const drawChecked = (checkedList, path) => {
+    // visualize search
+    const visualizeSearch = (checkedList, path) => {
       if (!this.gameMap) {
         return
       }
@@ -71,13 +71,15 @@ class thisScene extends Phaser.Scene {
       for (let i = 0 ; i < highestTimeoutId ; i++) {
           clearTimeout(i); 
       }
+      // clear existing tweens
+      this.tweens.killAll()
       // clear existing visited
       this.visited.clear();
       // set timers to visualize
       let interval = 0;
       for(var i = 0; i < checkedList.length; i++){
         drawLevelTimer(checkedList[i], interval, 0xFFBF00)
-        interval+=200;
+        interval+=100;
       }
       for(var i = 0; i < path.length; i++){
         drawLevelTimer([path[i]], interval, 0x0096FF)
@@ -90,12 +92,12 @@ class thisScene extends Phaser.Scene {
       if (!this.gameCam || !this.gameFinder) {
         return
       }
-      var x = this.gameCam.scrollX + pointer.x;
-      var y = this.gameCam.scrollY + pointer.y;
-      var toX = Math.floor(x/32);
-      var toY = Math.floor(y/32);
-      var fromX = Math.floor(this.gamePlayer.x/32);
-      var fromY = Math.floor(this.gamePlayer.y/32);
+      const x = this.gameCam.scrollX + pointer.x;
+      const y = this.gameCam.scrollY + pointer.y;
+      const toX = Math.floor(x/32);
+      const toY = Math.floor(y/32);
+      const fromX = Math.floor(this.gamePlayer.x/32);
+      const fromY = Math.floor(this.gamePlayer.y/32);
       console.log('going from ('+fromX+','+fromY+') to ('+toX+','+toY+')');
   
       this.gameFinder.findPath(fromX, fromY, toX, toY, function( result ) {
@@ -103,7 +105,7 @@ class thisScene extends Phaser.Scene {
               console.warn("Path was not found.");
           } else {
               console.log(result);
-              drawChecked(result.checked, result.path);
+              visualizeSearch(result.checked, result.path);
               // NOTE: if we dont need to show the checks
               // we can just move character now
               // moveCharacter(result.path)
@@ -117,7 +119,7 @@ class thisScene extends Phaser.Scene {
     this.gameCam.removeBounds();
     
     // setup player
-    var phaserGuy = this.add.image(32,32,'phaserguy');
+    const phaserGuy = this.add.image(32,32,'phaserguy');
     phaserGuy.setDepth(1);
     phaserGuy.setOrigin(0,0.5);
     // this.gameCam.startFollow(phaserGuy);
@@ -127,7 +129,7 @@ class thisScene extends Phaser.Scene {
     this.gameMap = this.make.tilemap({ key: 'map'});
     // The first parameter is the name of the tileset in Tiled and the second parameter is the key
     // of the tileset image used when loading the file in preload.
-    var tiles = this.gameMap.addTilesetImage('tiles', 'tileset');
+    const tiles = this.gameMap.addTilesetImage('tiles', 'tileset');
     this.gameMap.createStaticLayer(0, tiles, 0,0);
 
     // Marker that will follow the mouse
@@ -141,9 +143,9 @@ class thisScene extends Phaser.Scene {
     // ### Pathfinding stuff ###
 
     // We create the 2D array representing all the tiles of our map
-    var grid = [];
-    for(var y = 0; y < this.gameMap.height; y++){
-        var col = [];
+    const grid = [];
+    for(let y = 0; y < this.gameMap.height; y++){
+        let col = [];
         for(var x = 0; x < this.gameMap.width; x++){
             // In each cell we store the ID of the tile, which corresponds
             // to its index in the tileset of the map ("ID" field in Tiled)
@@ -153,13 +155,13 @@ class thisScene extends Phaser.Scene {
     }
     this.gameFinder.setGrid(grid);
 
-    var tileset = this.gameMap.tilesets[0];
-    var properties = tileset.tileProperties;
-    var acceptableTiles = [];
+    const tileset = this.gameMap.tilesets[0];
+    const properties = tileset.tileProperties;
+    let acceptableTiles = [];
 
     // We need to list all the tile IDs that can be walked on. Let's iterate over all of them
     // and see what properties have been entered in Tiled.
-    for(var i = tileset.firstgid-1; i < tiles.total; i++){ // firstgid and total are fields from Tiled that indicate the range of IDs that the tiles can take in that tileset
+    for(let i = tileset.firstgid-1; i < tiles.total; i++){ // firstgid and total are fields from Tiled that indicate the range of IDs that the tiles can take in that tileset
         if(!properties.hasOwnProperty(i)) {
             // If there is no property indicated at all, it means it's a walkable tile
             acceptableTiles.push(i+1);
@@ -178,11 +180,11 @@ class thisScene extends Phaser.Scene {
     if (!this.gameMap) {
       return;
     }
-    var worldPoint = this.input.activePointer.positionToCamera(this.cameras.main);
+    const worldPoint = this.input.activePointer.positionToCamera(this.cameras.main);
 
     // Rounds down to nearest tile
-    var pointerTileX = this.gameMap.worldToTileX(worldPoint.x);
-    var pointerTileY = this.gameMap.worldToTileY(worldPoint.y);
+    const pointerTileX = this.gameMap.worldToTileX(worldPoint.x);
+    const pointerTileY = this.gameMap.worldToTileY(worldPoint.y);
     this.gameMarker.x = this.gameMap.tileToWorldX(pointerTileX);
     this.gameMarker.y = this.gameMap.tileToWorldY(pointerTileY);
     this.gameMarker.setVisible(!this.checkCollision(pointerTileX,pointerTileY,this.gameMap));
