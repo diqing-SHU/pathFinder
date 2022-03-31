@@ -1,40 +1,16 @@
 /**
 *   Utilizing BFS for finding path
-*   github.com/prettymuchbryce/EasyStarJS
-*   Licensed under the MIT license.
-*
-*   Implementation By Bryce Neal (@prettymuchbryce)
+*   Class structure is inspired by EasyStarJS
 **/
 import Instance from './instance';
 import Node from './node';
 
-// enum
-const directionMap = {
-  TOP: 'TOP',
-  TOP_RIGHT: 'TOP_RIGHT',
-  RIGHT: 'RIGHT',
-  BOTTOM_RIGHT: 'BOTTOM_RIGHT',
-  BOTTOM: 'BOTTOM',
-  BOTTOM_LEFT: 'BOTTOM_LEFT',
-  LEFT: 'LEFT',
-  TOP_LEFT: 'TOP_LEFT',
-}
-// Helper to getDistance between two points
-const getDistance = (x1,y1,x2,y2) => {
-  // Manhattan distance
-  const dx = Math.abs(x1 - x2);
-  const dy = Math.abs(y1 - y2);
-  return (dx + dy);
-  // Octile distance if we need it
-  // const dx = Math.abs(x1 - x2);
-  // const dy = Math.abs(y1 - y2);
-  // if (dx < dy) {
-  //   return DIAGONAL_COST * dx + dy;
-  // } else {
-  //   return DIAGONAL_COST * dy + dx;
-  // }
-};
+// Constants
+const CLOSED_LIST = 0;
+const OPEN_LIST = 1;
+const STRAIGHT_COST = 1.0;
 
+// Helpers
 // Helper to generate node from coordinate
 const coordinateToNode = (instance, x, y, parent, cost) => {
   // set up if we dont have in hashmap
@@ -55,46 +31,15 @@ const coordinateToNode = (instance, x, y, parent, cost) => {
   return node;
 };
 
-// Helpers
-/**
- * -1, -1 | 0, -1  | 1, -1
- * -1,  0 | SOURCE | 1,  0
- * -1,  1 | 0,  1  | 1,  1
- */
-const calculateDirection = function (diffX, diffY) {
-  if (diffX === 0 && diffY === -1) return directionMap.TOP
-  else if (diffX === 1 && diffY === -1) return directionMap.TOP_RIGHT
-  else if (diffX === 1 && diffY === 0) return directionMap.RIGHT
-  else if (diffX === 1 && diffY === 1) return directionMap.BOTTOM_RIGHT
-  else if (diffX === 0 && diffY === 1) return directionMap.BOTTOM
-  else if (diffX === -1 && diffY === 1) return directionMap.BOTTOM_LEFT
-  else if (diffX === -1 && diffY === 0) return directionMap.LEFT
-  else if (diffX === -1 && diffY === -1) return directionMap.TOP_LEFT
-  throw new Error('These differences are not valid: ' + diffX + ', ' + diffY)
-};
-
 // Helper to check if tile is walkable
 const isTileWalkable = function(collisionGrid, acceptableTiles, x, y, sourceNode) {
-  // const direction = calculateDirection(sourceNode.x - x, sourceNode.y - y)
-  // const directionIncluded = function () {
-  //     for (var i = 0; i < directionalCondition.length; i++) {
-  //         if (directionalCondition[i] === direction) return true
-  //     }
-  //     return false
-  // }
-  // if (!directionIncluded()) return false
   for (var i = 0; i < acceptableTiles.length; i++) {
       if (collisionGrid[y][x] === acceptableTiles[i]) {
           return true;
       }
   }
-
   return false;
 };
-
-const CLOSED_LIST = 0;
-const OPEN_LIST = 1;
-const STRAIGHT_COST = 1.0;
 
 class BFS {
   collisionGrid;
@@ -120,9 +65,9 @@ class BFS {
   }
 
    /**
-  * Sets the collision grid that EasyStar uses.
+  * Sets the collision grid that algorithm uses.
   *
-  * @param {Array} grid The collision grid that this EasyStar instance will read from.
+  * @param {Array} grid The collision grid that this BFS instance will read from.
   * This should be a 2D Array of Numbers.
   **/
   setGrid(grid){
@@ -135,11 +80,10 @@ class BFS {
             }
         }
     }
-    console.log(this.costMap)
   }
 
   /**
-  * Sets the collision grid that EasyStar uses.
+  * Sets the Acceptable Tiles that can be walked on.
   *
   * @param {Array|Number} tiles An array of numbers that represent
   * which tiles in your grid should be considered
@@ -158,8 +102,8 @@ class BFS {
   /**
   * Sets the tile cost for a particular tile type.
   *
-  * @param {Number} The tile type to set the cost for.
-  * @param {Number} The multiplicative cost associated with the given tile.
+  * @param {Number} tileType the tileType.
+  * @param {Number} cost the cost.
   **/
   setTileCost(tileType, cost) {
     this.costMap[tileType] = cost;
@@ -168,17 +112,21 @@ class BFS {
   /**
   * Gets the tile cost for a particular tile type.
   *
-  * @param {Number} The tile type to set the cost for.
-  * @param {Number} The multiplicative cost associated with the given tile.
+  * @param {Number} x the x index.
+  * @param {Number} y the y index.
   **/
   getTileCost(x, y) {
     return this.costMap[this.collisionGrid[y][x]]
   };
 
   /**
-  * checkAdjacentNode
+  * Sets the tile cost for a particular tile type.
   *
-  * 
+  * @param {Number} instance the search instance.
+  * @param {Number} searchNode the node we are coming from.
+  * @param {Number} x the x offset.
+  * @param {Number} y the y offset.
+  * @param {Number} cost the cost so far.
   **/
   checkAdjacentNode = function(instance, searchNode, x, y, cost) {
     const adjacentCoordinateX = searchNode.x+x;
@@ -277,10 +225,8 @@ class BFS {
   }
 
   /**
-  * This method steps through the A* Algorithm in an attempt to
-  * find your path(s). It will search 4-8 tiles (depending on diagonals) for every calculation.
-  * You can change the number of calculations done in a call by using
-  * easystar.setIteratonsPerCalculation().
+  * This method steps through the BFS Algorithm in an attempt to
+  * find your path(s). It will search 4 tiles for every calculation.
   **/
   calculate(){
     if (this.instanceQueue.length === 0 || this.collisionGrid === undefined || this.acceptableTiles === undefined) {
@@ -336,13 +282,14 @@ class BFS {
         }
         path.reverse();
         const ip = path;
-        
+        // callback path along with checked levels
         instance.callback({path:ip, checked:instance.checkedLevels});
         delete this.instances[instanceId];
         this.instanceQueue.shift();
         continue;
       }
       searchNode.list = CLOSED_LIST;
+      // try 4 directions
       if (searchNode.y > 0) {
         this.checkAdjacentNode(instance, searchNode,
             0, -1, STRAIGHT_COST * this.getTileCost(searchNode.x, searchNode.y-1));

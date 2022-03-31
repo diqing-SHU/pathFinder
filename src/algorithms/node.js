@@ -7,10 +7,10 @@
 **/
 class Node {
   constructor(parent, x, y, costSoFar) {
-    this.parent = parent;
+    this.parent = parent; // use to back track the path
     this.x = x;
     this.y = y;
-    this.costSoFar = costSoFar;
+    this.costSoFar = costSoFar; // store lowest cost
   }
 };
 

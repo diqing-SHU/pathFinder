@@ -13,7 +13,7 @@
     this.nodeHash = {};
     this.openList;
     this.nextLevel;
-    this.checkedLevels;
+    this.checkedLevels; // levels to visualize search
   }
 };
 

@@ -2,7 +2,6 @@
 import tileset from './assets/gridtiles.png';
 import map from './assets/map.json';
 import phaserguy from './assets/phaserguy.png';
-// import easystarjs from 'easystarjs';
 import BFS from './algorithms/bfs';
 
 class thisScene extends Phaser.Scene {
@@ -17,16 +16,14 @@ class thisScene extends Phaser.Scene {
     // Game.player  => this.gamePlayer
     // Game.marker  => this.gameMarker
     // Game.finder  => this.gameFinder
+
     // Initializing the pathfinder
-    // this.gameFinder = new easystarjs.js();
     this.gameFinder = new BFS();
     this.gameCam = null;
     this.gamePlayer = null;
     this.gameMap = null;
     this.gameMarker = null;
   }
-
-  
 
   preload(){
     this.load.image('tileset', tileset);
@@ -41,7 +38,7 @@ class thisScene extends Phaser.Scene {
         return
       }
       // Sets up a list of tweens, one for each tile to walk, that will be chained by the timeline
-      var tweens = [];
+      let tweens = [];
       // skip starting index to animate
       for(var i = 1; i < path.length; i++){
           tweens.push({
@@ -57,27 +54,36 @@ class thisScene extends Phaser.Scene {
     };
 
     // tweens draw out the checked tiles
-    const drawChecked = (checkedList) => {
+    const drawChecked = (checkedList, path) => {
       if (!this.gameMap) {
         return
       }
-      // Sets up a list of tweens, one for each tile to walk, that will be chained by the timeline
-      var tweens = [];
-      const drawLevel = (level) => level.forEach(location => {
-        console.log(location);
-        this.visited.strokeRect(location.x*this.gameMap.tileWidth, location.y*this.gameMap.tileHeight, this.gameMap.tileWidth, this.gameMap.tileHeight);
-      });
+      const drawLevelTimer = (level, interval, color) => setTimeout(() => {
+        level.forEach(location => {
+          console.log(location);
+          this.visited.lineStyle(3, color, 1);
+          this.visited.strokeRect(location.x*this.gameMap.tileWidth+3, location.y*this.gameMap.tileHeight+3, this.gameMap.tileWidth-6, this.gameMap.tileHeight-6);
+        })
+      }, interval);
+      // Set a fake timeout to get the highest timeout id
+      const highestTimeoutId = setTimeout(";");
+      // clear existing timers
+      for (let i = 0 ; i < highestTimeoutId ; i++) {
+          clearTimeout(i); 
+      }
       // clear existing visited
       this.visited.clear();
-      this.visited.lineStyle(3, 0xFFBF00, 1);
+      // set timers to visualize
+      let interval = 0;
       for(var i = 0; i < checkedList.length; i++){
-        tweens.push({
-          targets: this.visited,
-          completeDelay: 200,
-          onComplete: drawLevel(checkedList[i]),
-        });
-        // setTimeout(drawLevel(checkedList[i]), 2000)
+        drawLevelTimer(checkedList[i], interval, 0xFFBF00)
+        interval+=200;
       }
+      for(var i = 0; i < path.length; i++){
+        drawLevelTimer([path[i]], interval, 0x0096FF)
+        interval+=50;
+      }
+      setTimeout(() => moveCharacter(path), interval);
     };
 
     const handleClick = (pointer) => {
@@ -97,8 +103,10 @@ class thisScene extends Phaser.Scene {
               console.warn("Path was not found.");
           } else {
               console.log(result);
-              drawChecked(result.checked)
-              moveCharacter(result.path);
+              drawChecked(result.checked, result.path);
+              // NOTE: if we dont need to show the checks
+              // we can just move character now
+              // moveCharacter(result.path)
           }
       });
       this.gameFinder.calculate(); // call calculate to generate path
@@ -167,8 +175,6 @@ class thisScene extends Phaser.Scene {
   };
 
   update(){
-    // console.log('updatingggggg');
-    // console.log(this.gameMap);
     if (!this.gameMap) {
       return;
     }
