@@ -181,8 +181,8 @@ class BFS {
   * 
   **/
   checkAdjacentNode = function(instance, searchNode, x, y, cost) {
-    var adjacentCoordinateX = searchNode.x+x;
-    var adjacentCoordinateY = searchNode.y+y;
+    const adjacentCoordinateX = searchNode.x+x;
+    const adjacentCoordinateY = searchNode.y+y;
 
     if ((instance.pointsToAvoid[adjacentCoordinateY] === undefined ||
       instance.pointsToAvoid[adjacentCoordinateY][adjacentCoordinateX] === undefined) &&
@@ -192,6 +192,7 @@ class BFS {
         if (node.list === undefined) {
             node.list = OPEN_LIST;
             instance.nextLevel.push(node);
+            instance.checkedLevels[instance.checkedLevels.length-1].push({x: adjacentCoordinateX, y: adjacentCoordinateY});
         } else if (searchNode.costSoFar + cost < node.costSoFar) {
             // const index = instance.nextLevel.indexOf(node);
             node.costSoFar = searchNode.costSoFar + cost;
@@ -242,7 +243,7 @@ class BFS {
 
     // Start and end are the same tile.
     if (startX===endX && startY===endY) {
-        callbackWrapper([]);
+        callbackWrapper({path:[], checked:[]});
         return;
     }
 
@@ -255,6 +256,7 @@ class BFS {
     const instance = new Instance();
     instance.openList = [];
     instance.nextLevel = [];
+    instance.checkedLevels = [[{x: startX, y: startY}],[]];
     instance.isDoneCalculating = false;
     instance.nodeHash = {};
     instance.startX = startX;
@@ -308,6 +310,8 @@ class BFS {
       if (instance.openList.length==0){
         instance.openList = instance.nextLevel;
         instance.nextLevel = [];
+        // prepare new level for checkedLevels
+        instance.checkedLevels.push([]);
       }
       // Couldn't find a path.
       if (instance.openList.length === 0) {
@@ -321,6 +325,7 @@ class BFS {
       
       // Handles the case where we have found the destination
       if (instance.endX === searchNode.x && instance.endY === searchNode.y) {
+        console.log(instance)
         // creating path
         const path = [];
         path.push({x: searchNode.x, y: searchNode.y});
@@ -331,7 +336,8 @@ class BFS {
         }
         path.reverse();
         const ip = path;
-        instance.callback(ip);
+        
+        instance.callback({path:ip, checked:instance.checkedLevels});
         delete this.instances[instanceId];
         this.instanceQueue.shift();
         continue;

@@ -2,7 +2,7 @@
 import tileset from './assets/gridtiles.png';
 import map from './assets/map.json';
 import phaserguy from './assets/phaserguy.png';
-import easystarjs from 'easystarjs';
+// import easystarjs from 'easystarjs';
 import BFS from './algorithms/bfs';
 
 class thisScene extends Phaser.Scene {
@@ -35,6 +35,7 @@ class thisScene extends Phaser.Scene {
   }
 
   create(){
+    // tweens to move character along path
     const moveCharacter = (path) => {
       if (!this.gameMap||!this.gamePlayer) {
         return
@@ -55,6 +56,30 @@ class thisScene extends Phaser.Scene {
       });
     };
 
+    // tweens draw out the checked tiles
+    const drawChecked = (checkedList) => {
+      if (!this.gameMap) {
+        return
+      }
+      // Sets up a list of tweens, one for each tile to walk, that will be chained by the timeline
+      var tweens = [];
+      const drawLevel = (level) => level.forEach(location => {
+        console.log(location);
+        this.visited.strokeRect(location.x*this.gameMap.tileWidth, location.y*this.gameMap.tileHeight, this.gameMap.tileWidth, this.gameMap.tileHeight);
+      });
+      // clear existing visited
+      this.visited.clear();
+      this.visited.lineStyle(3, 0xFFBF00, 1);
+      for(var i = 0; i < checkedList.length; i++){
+        tweens.push({
+          targets: this.visited,
+          completeDelay: 200,
+          onComplete: drawLevel(checkedList[i]),
+        });
+        // setTimeout(drawLevel(checkedList[i]), 2000)
+      }
+    };
+
     const handleClick = (pointer) => {
       if (!this.gameCam || !this.gameFinder) {
         return
@@ -67,15 +92,16 @@ class thisScene extends Phaser.Scene {
       var fromY = Math.floor(this.gamePlayer.y/32);
       console.log('going from ('+fromX+','+fromY+') to ('+toX+','+toY+')');
   
-      this.gameFinder.findPath(fromX, fromY, toX, toY, function( path ) {
-          if (path === null) {
+      this.gameFinder.findPath(fromX, fromY, toX, toY, function( result ) {
+          if (result === null) {
               console.warn("Path was not found.");
           } else {
-              console.log(path);
-              moveCharacter(path);
+              console.log(result);
+              drawChecked(result.checked)
+              moveCharacter(result.path);
           }
       });
-      this.gameFinder.calculate(); // don't forget, otherwise nothing happens
+      this.gameFinder.calculate(); // call calculate to generate path
     };
     // setup cam
     this.gameCam = this.cameras.main;
@@ -100,6 +126,9 @@ class thisScene extends Phaser.Scene {
     this.gameMarker = this.add.graphics();
     this.gameMarker.lineStyle(3, 0xffffff, 1);
     this.gameMarker.strokeRect(0, 0, this.gameMap.tileWidth, this.gameMap.tileHeight);
+
+    // visited
+    this.visited = this.add.graphics();
 
     // ### Pathfinding stuff ###
 

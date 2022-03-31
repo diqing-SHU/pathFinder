@@ -13,6 +13,7 @@
     this.nodeHash = {};
     this.openList;
     this.nextLevel;
+    this.checkedLevels;
   }
 };
 
