@@ -3,6 +3,7 @@ import tileset from './assets/gridtiles.png';
 import map from './assets/map.json';
 import phaserguy from './assets/phaserguy.png';
 import BFS from './algorithms/bfs';
+import { TextButton } from './gameObj/textButton';
 
 class thisScene extends Phaser.Scene {
   constructor() {
@@ -18,11 +19,15 @@ class thisScene extends Phaser.Scene {
     // Game.finder  => this.gameFinder
 
     // Initializing the pathfinder
-    this.gameFinder = new BFS();
+    this.gameFinder = null;
     this.gameCam = null;
     this.gamePlayer = null;
     this.gameMap = null;
     this.gameMarker = null;
+    this.currAlgo = null;
+    this.gameGrid = null;
+    this.gameAcceptableTiles = null;
+    this.gameCostMap = null;
   }
 
   preload(){
@@ -60,21 +65,14 @@ class thisScene extends Phaser.Scene {
       }
       const drawLevelTimer = (level, interval, color) => setTimeout(() => {
         level.forEach(location => {
-          console.log(location);
           this.visited.lineStyle(3, color, 1);
           this.visited.strokeRect(location.x*this.gameMap.tileWidth+3, location.y*this.gameMap.tileHeight+3, this.gameMap.tileWidth-6, this.gameMap.tileHeight-6);
         })
       }, interval);
-      // Set a fake timeout to get the highest timeout id
-      const highestTimeoutId = setTimeout(";");
-      // clear existing timers
-      for (let i = 0 ; i < highestTimeoutId ; i++) {
-          clearTimeout(i); 
-      }
-      // clear existing tweens
-      this.tweens.killAll()
-      // clear existing visited
-      this.visited.clear();
+
+      // clear curr animation first
+      this.clearCurrAnimation()
+
       // set timers to visualize
       let interval = 0;
       for(var i = 0; i < checkedList.length; i++){
@@ -88,6 +86,7 @@ class thisScene extends Phaser.Scene {
       setTimeout(() => moveCharacter(path), interval);
     };
 
+    // handle on click event
     const handleClick = (pointer) => {
       if (!this.gameCam || !this.gameFinder) {
         return
@@ -98,8 +97,10 @@ class thisScene extends Phaser.Scene {
       const toY = Math.floor(y/32);
       const fromX = Math.floor(this.gamePlayer.x/32);
       const fromY = Math.floor(this.gamePlayer.y/32);
+      if (!this.gameMap ||  toX >= this.gameMap.height || toY >= this.gameMap.width) {
+        return
+      }
       console.log('going from ('+fromX+','+fromY+') to ('+toX+','+toY+')');
-  
       this.gameFinder.findPath(fromX, fromY, toX, toY, function( result ) {
           if (result === null) {
               console.warn("Path was not found.");
@@ -115,8 +116,7 @@ class thisScene extends Phaser.Scene {
     };
     // setup cam
     this.gameCam = this.cameras.main;
-    // this.gameCam.setBounds(0, 0, 20*32, 20*32);
-    this.gameCam.removeBounds();
+    this.gameCam.setBounds(0, 0, 20*32+200, 20*32+200);
     
     // setup player
     const phaserGuy = this.add.image(32,32,'phaserguy');
@@ -140,8 +140,7 @@ class thisScene extends Phaser.Scene {
     // visited
     this.visited = this.add.graphics();
 
-    // ### Pathfinding stuff ###
-
+    // prepare Pathfinding stuff
     // We create the 2D array representing all the tiles of our map
     const grid = [];
     for(let y = 0; y < this.gameMap.height; y++){
@@ -153,11 +152,12 @@ class thisScene extends Phaser.Scene {
         }
         grid.push(col);
     }
-    this.gameFinder.setGrid(grid);
+    this.gameGrid = grid
 
     const tileset = this.gameMap.tilesets[0];
     const properties = tileset.tileProperties;
-    let acceptableTiles = [];
+    const acceptableTiles = [];
+    const costMap = [];
 
     // We need to list all the tile IDs that can be walked on. Let's iterate over all of them
     // and see what properties have been entered in Tiled.
@@ -168,13 +168,55 @@ class thisScene extends Phaser.Scene {
             continue;
         }
         if(!properties[i].collide) acceptableTiles.push(i+1);
-        if(properties[i].cost) this.gameFinder.setTileCost(i+1, properties[i].cost); // If there is a cost attached to the tile, let's register it
+        if(properties[i].cost) costMap.push([i+1, properties[i].cost]);
     }
-    this.gameFinder.setAcceptableTiles(acceptableTiles);
-    
+    this.gameCostMap = costMap
+    this.gameAcceptableTiles = acceptableTiles
+
+    // algo buttons
+    this.selectedText = this.add.text(20*32, 200, '');
+    const BFSButton = new TextButton(this, 20*32, 100, 'BFS', { fill: '#0f0'}, () => this.switchAlgo('BFS'));
+    const DFSButton = new TextButton(this, 20*32, 150, 'DFS', { fill: '#0f0'}, () => this.switchAlgo('DFS'));
+    this.add.existing(BFSButton);
+    this.add.existing(DFSButton);
+    // switch to default algo
+    this.switchAlgo('BFS');
+
     // Handles the clicks on the map to make the character move
     this.input.on('pointerup', handleClick);
   };
+
+  switchAlgo(algoName) {
+    if (algoName == this.currAlgo){
+      return
+    }
+    // clear curr animation first
+    this.clearCurrAnimation()
+    // switch algo
+    this.currAlgo = algoName
+    this.selectedText.setText(`Selected ${this.currAlgo}.`);
+    // initialize algo
+    this.gameFinder = new BFS();
+    // fill base info
+    this.gameFinder.setGrid(this.gameGrid);
+    this.gameFinder.setAcceptableTiles(this.gameAcceptableTiles);
+    this.gameCostMap.forEach(([id, cost]) => {
+      this.gameFinder.setTileCost(id, cost);
+    });
+  }
+
+  clearCurrAnimation() {
+    // Set a fake timeout to get the highest timeout id
+    const highestTimeoutId = setTimeout(";");
+    // clear existing timers
+    for (let i = 0 ; i < highestTimeoutId ; i++) {
+        clearTimeout(i); 
+    }
+    // clear existing tweens
+    this.tweens.killAll()
+    // clear existing visited
+    this.visited.clear();
+  }
 
   update(){
     if (!this.gameMap) {
@@ -185,20 +227,22 @@ class thisScene extends Phaser.Scene {
     // Rounds down to nearest tile
     const pointerTileX = this.gameMap.worldToTileX(worldPoint.x);
     const pointerTileY = this.gameMap.worldToTileY(worldPoint.y);
+    if (pointerTileX >= this.gameMap.height || pointerTileY >= this.gameMap.width) {
+      return;
+    }
+    // display marker
     this.gameMarker.x = this.gameMap.tileToWorldX(pointerTileX);
     this.gameMarker.y = this.gameMap.tileToWorldY(pointerTileY);
-    this.gameMarker.setVisible(!this.checkCollision(pointerTileX,pointerTileY,this.gameMap));
+    this.gameMarker.setVisible(!this.checkCollision(pointerTileX,pointerTileY));
   };
 
 
   checkCollision(x,y){
-    if (!this.gameMap || !this.gameMap.getTileAt(x, y)) {
-      console.log('!this.gameMap || !this.gameMap.getTileAt(x, y)');
-      console.log(this.gameMap);
-      console.log(this.gameMap.getTileAt(x, y));
+    if (!this.gameMap || y >= this.gameMap.height || x >= this.gameMap.width) {
+      console.log('!this.gameMap || y >= this.gameMap.height || x >= this.gameMap.width');
       return false;
     }
-    var tile = this.gameMap.getTileAt(x, y);
+    const tile = this.gameMap.getTileAt(x, y);
     return tile.properties.collide == true;
   };
 
@@ -208,7 +252,7 @@ class thisScene extends Phaser.Scene {
       console.log(this.gameMap);
       return -1;
     }
-    var tile = this.gameMap.getTileAt(x, y);
+    const tile = this.gameMap.getTileAt(x, y);
     return tile.index;
   };
 

@@ -8,7 +8,7 @@ import GameScene from './game';
 const config = {
   type: Phaser.AUTO,
   // NOTE: use fix size to start
-  width: 20*32,
+  width: 20*32+200,
   height: 20*32,
   // width: window.innerWidth,
   // height: window.innerHeight - 5,
