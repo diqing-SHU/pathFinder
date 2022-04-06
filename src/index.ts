@@ -22,4 +22,7 @@ const config = {
     // LeaderboardScene,
   ],
 };
-const game = new Phaser.Game(config); // eslint-disable-line no-unused-vars
+
+window.addEventListener('load', () => {
+  const game = new Phaser.Game(config)
+})

@@ -1,49 +1,51 @@
-
-import tileset from './assets/gridtiles.png';
-import map from './assets/map.json';
-import phaserguy from './assets/phaserguy.png';
+// TODO: update with TS
+// @ts-ignore
 import BFS from './algorithms/bfs';
+// @ts-ignore
 import { TextButton } from './gameObj/textButton';
+import { Vector } from 'matter';
 
-class thisScene extends Phaser.Scene {
+type GameGridType = number[][];
+type GameCostMapType = [number, number | undefined][];
+type CustomTileProperties = {
+  [index: number]: {
+    collide: boolean | undefined;
+    cost: number | undefined
+  };
+}
+
+class GameScene extends Phaser.Scene {
+  // TODO: fix typing of any
+  gameFinder: any;
+  gameCam: Phaser.Cameras.Scene2D.Camera | undefined;
+  gamePlayer: Phaser.GameObjects.Image | undefined;
+  gameMap: Phaser.Tilemaps.Tilemap | undefined;
+  gameMarker: Phaser.GameObjects.Graphics | undefined;
+  currAlgo: string | undefined;
+  gameGrid: GameGridType | undefined;
+  gameAcceptableTiles: number[] | undefined;
+  gameCostMap: GameCostMapType | undefined;
+  visited: Phaser.GameObjects.Graphics;
+  selectedText: Phaser.GameObjects.Text | undefined;
+
   constructor() {
-    super({ key: 'thisScene' });
-  }
-
-  init(){
-    // bindings
-    // Game.camera => this.gameCam
-    // Game.map => this.gameMap
-    // Game.player  => this.gamePlayer
-    // Game.marker  => this.gameMarker
-    // Game.finder  => this.gameFinder
-
-    // Initializing the pathfinder
-    this.gameFinder = null;
-    this.gameCam = null;
-    this.gamePlayer = null;
-    this.gameMap = null;
-    this.gameMarker = null;
-    this.currAlgo = null;
-    this.gameGrid = null;
-    this.gameAcceptableTiles = null;
-    this.gameCostMap = null;
+    super({ key: 'mainScene' });
   }
 
   preload(){
-    this.load.image('tileset', tileset);
-    this.load.tilemapTiledJSON('map', map);
-    this.load.image('phaserguy', phaserguy);
+    this.load.image('tileset', './assets/gridtiles.png');
+    this.load.tilemapTiledJSON('map', './assets/map.json');
+    this.load.image('phaserguy', './assets/phaserguy.png');
   }
 
   create(){
     // tweens to move character along path
-    const moveCharacter = (path) => {
+    const moveCharacter = (path: any[]) => {
       if (!this.gameMap||!this.gamePlayer) {
         return
       }
       // Sets up a list of tweens, one for each tile to walk, that will be chained by the timeline
-      let tweens = [];
+      let tweens:object[] = [];
       // skip starting index to animate
       for(var i = 1; i < path.length; i++){
           tweens.push({
@@ -59,14 +61,20 @@ class thisScene extends Phaser.Scene {
     };
 
     // visualize search
-    const visualizeSearch = (checkedList, path) => {
+    const visualizeSearch = (checkedList: any[], path: any[]) => {
       if (!this.gameMap) {
         return
       }
-      const drawLevelTimer = (level, interval, color) => setTimeout(() => {
+      const drawLevelTimer = (level: any[], interval: number | undefined, color: number) => setTimeout(() => {
         level.forEach(location => {
+          if (!this.gameMap) {
+            console.log("!this.gameMap")
+            return
+          }
           this.visited.lineStyle(3, color, 1);
           this.visited.strokeRect(location.x*this.gameMap.tileWidth+3, location.y*this.gameMap.tileHeight+3, this.gameMap.tileWidth-6, this.gameMap.tileHeight-6);
+          console.log(color)
+          console.log(location.x*this.gameMap.tileWidth+3, location.y*this.gameMap.tileHeight+3, this.gameMap.tileWidth-6, this.gameMap.tileHeight-6)
         })
       }, interval);
 
@@ -87,8 +95,8 @@ class thisScene extends Phaser.Scene {
     };
 
     // handle on click event
-    const handleClick = (pointer) => {
-      if (!this.gameCam || !this.gameFinder) {
+    const handleClick = (pointer: { x: number; y: number; }) => {
+      if (!this.gameCam || !this.gameFinder || !this.gamePlayer) {
         return
       }
       const x = this.gameCam.scrollX + pointer.x;
@@ -101,7 +109,7 @@ class thisScene extends Phaser.Scene {
         return
       }
       console.log('going from ('+fromX+','+fromY+') to ('+toX+','+toY+')');
-      this.gameFinder.findPath(fromX, fromY, toX, toY, function( result ) {
+      this.gameFinder.findPath(fromX, fromY, toX, toY, function( result: { checked: any[]; path: any[]; } | null ) {
           if (result === null) {
               console.warn("Path was not found.");
           } else {
@@ -120,31 +128,34 @@ class thisScene extends Phaser.Scene {
     
     // setup player
     const phaserGuy = this.add.image(32,32,'phaserguy');
-    phaserGuy.setDepth(1);
+    phaserGuy.setDepth(2);
     phaserGuy.setOrigin(0,0.5);
     // this.gameCam.startFollow(phaserGuy);
     this.gamePlayer = phaserGuy;
+
+    // visited
+    this.visited = this.add.graphics();
+    this.visited.setDepth(1);
 
     // Display map
     this.gameMap = this.make.tilemap({ key: 'map'});
     // The first parameter is the name of the tileset in Tiled and the second parameter is the key
     // of the tileset image used when loading the file in preload.
     const tiles = this.gameMap.addTilesetImage('tiles', 'tileset');
-    this.gameMap.createStaticLayer(0, tiles, 0,0);
+    this.gameMap.createLayer(0, tiles, 0,0);
 
     // Marker that will follow the mouse
     this.gameMarker = this.add.graphics();
     this.gameMarker.lineStyle(3, 0xffffff, 1);
     this.gameMarker.strokeRect(0, 0, this.gameMap.tileWidth, this.gameMap.tileHeight);
 
-    // visited
-    this.visited = this.add.graphics();
+    
 
     // prepare Pathfinding stuff
     // We create the 2D array representing all the tiles of our map
-    const grid = [];
+    const grid:GameGridType = [];
     for(let y = 0; y < this.gameMap.height; y++){
-        let col = [];
+        const col:number[] = [];
         for(var x = 0; x < this.gameMap.width; x++){
             // In each cell we store the ID of the tile, which corresponds
             // to its index in the tileset of the map ("ID" field in Tiled)
@@ -153,11 +164,11 @@ class thisScene extends Phaser.Scene {
         grid.push(col);
     }
     this.gameGrid = grid
-
     const tileset = this.gameMap.tilesets[0];
-    const properties = tileset.tileProperties;
-    const acceptableTiles = [];
-    const costMap = [];
+    
+    const properties = tileset.tileProperties as CustomTileProperties;
+    const acceptableTiles:number[] = [];
+    const costMap:[number, number | undefined][] = [];
 
     // We need to list all the tile IDs that can be walked on. Let's iterate over all of them
     // and see what properties have been entered in Tiled.
@@ -186,8 +197,8 @@ class thisScene extends Phaser.Scene {
     this.input.on('pointerup', handleClick);
   };
 
-  switchAlgo(algoName) {
-    if (algoName == this.currAlgo){
+  switchAlgo(algoName: string) {
+    if (algoName == this.currAlgo || !this.selectedText || !this.gameCostMap){
       return
     }
     // clear curr animation first
@@ -219,10 +230,10 @@ class thisScene extends Phaser.Scene {
   }
 
   update(){
-    if (!this.gameMap) {
+    if (!this.gameMap || !this.gameMarker) {
       return;
     }
-    const worldPoint = this.input.activePointer.positionToCamera(this.cameras.main);
+    const worldPoint = this.input.activePointer.positionToCamera(this.cameras.main) as Vector;
 
     // Rounds down to nearest tile
     const pointerTileX = this.gameMap.worldToTileX(worldPoint.x);
@@ -237,7 +248,7 @@ class thisScene extends Phaser.Scene {
   };
 
 
-  checkCollision(x,y){
+  checkCollision(x: number,y: number){
     if (!this.gameMap || y >= this.gameMap.height || x >= this.gameMap.width) {
       console.log('!this.gameMap || y >= this.gameMap.height || x >= this.gameMap.width');
       return false;
@@ -246,7 +257,7 @@ class thisScene extends Phaser.Scene {
     return tile.properties.collide == true;
   };
 
-  getTileID(x,y){
+  getTileID(x: number,y: number){
     if (!this.gameMap) {
       console.log('!this.gameMap');
       console.log(this.gameMap);
@@ -259,7 +270,7 @@ class thisScene extends Phaser.Scene {
   
 
 }
-export default thisScene;
+export default GameScene;
 
 
 
