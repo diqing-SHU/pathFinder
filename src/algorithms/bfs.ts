@@ -12,7 +12,8 @@ const STRAIGHT_COST = 1.0;
 
 // Helpers
 // Helper to generate node from coordinate
-const coordinateToNode = (instance, x, y, parent, cost) => {
+
+const coordinateToNode = (instance: Instance, x: number, y: number, parent: Node|null, cost: number): Node => {
   // set up if we dont have in hashmap
   if (instance.nodeHash[y] !== undefined) {
     if (instance.nodeHash[y][x] !== undefined) {
@@ -32,7 +33,7 @@ const coordinateToNode = (instance, x, y, parent, cost) => {
 };
 
 // Helper to check if tile is walkable
-const isTileWalkable = function(collisionGrid, acceptableTiles, x, y, sourceNode) {
+const isTileWalkable = (collisionGrid:number[][], acceptableTiles:number[], x:number, y:number, sourceNode:Node) => {
   for (var i = 0; i < acceptableTiles.length; i++) {
       if (collisionGrid[y][x] === acceptableTiles[i]) {
           return true;
@@ -42,15 +43,16 @@ const isTileWalkable = function(collisionGrid, acceptableTiles, x, y, sourceNode
 };
 
 class BFS {
-  collisionGrid;
-  costMap;
-  acceptableTiles;
-  instances;
-  instanceQueue;
-  iterationsPerCalculation;
-  nextInstanceId;
-  isAcceptable;
-  syncEnabled;
+  collisionGrid:number[][];
+  costMap:{[index: number]: number};
+  acceptableTiles:number[];
+  instances:{[index: number]: Instance};
+  instanceQueue:number[];
+  iterationsPerCalculation:number;
+  nextInstanceId:number;
+  isAcceptable:boolean;
+  syncEnabled:boolean;
+  isDoneCalculating:boolean;
 
   constructor() {
     this.collisionGrid;
@@ -70,7 +72,7 @@ class BFS {
   * @param {Array} grid The collision grid that this BFS instance will read from.
   * This should be a 2D Array of Numbers.
   **/
-  setGrid(grid){
+  setGrid(grid:number[][]){
     this.collisionGrid = grid;
     // Add to cost map if we dont have
     for (var y = 0; y < this.collisionGrid.length; y++) {
@@ -89,11 +91,12 @@ class BFS {
   * which tiles in your grid should be considered
   * acceptable, or "walkable".
   **/
-  setAcceptableTiles(tiles){
+  setAcceptableTiles(tiles:(number[]|number)){
     if (tiles instanceof Array) {
       // Array
       this.acceptableTiles = tiles;
-    } else if (!isNaN(parseFloat(tiles)) && isFinite(tiles)) {
+    // } else if (!isNaN(parseFloat(tiles)) && isFinite(tiles)) {
+    } else {
       // Number
       this.acceptableTiles = [tiles];
     }
@@ -128,7 +131,7 @@ class BFS {
   * @param {Number} y the y offset.
   * @param {Number} cost the cost so far.
   **/
-  checkAdjacentNode = function(instance, searchNode, x, y, cost) {
+  checkAdjacentNode = (instance, searchNode, x, y, cost) => {
     const adjacentCoordinateX = searchNode.x+x;
     const adjacentCoordinateY = searchNode.y+y;
 
@@ -164,7 +167,7 @@ class BFS {
   **/
   findPath(startX, startY, endX, endY, callback){
     // Wraps the callback for sync vs async logic
-    var callbackWrapper = function(result) {
+    var callbackWrapper = (result) => {
       if (this.syncEnabled) {
         callback(result);
       } else {
@@ -215,7 +218,7 @@ class BFS {
 
     // set starting node
     instance.openList.push(coordinateToNode(instance, instance.startX,
-        instance.startY, null));
+        instance.startY, null, 0));
 
     // prepare and record this instance
     const instanceId = this.nextInstanceId ++;
@@ -234,14 +237,14 @@ class BFS {
     }
 
 
-    for (this.iterationsSoFar = 0; this.iterationsSoFar < this.iterationsPerCalculation; this.iterationsSoFar++) {
+    for (let iterationsSoFar = 0; iterationsSoFar < this.iterationsPerCalculation; iterationsSoFar++) {
       if (this.instanceQueue.length === 0) {
           return;
       }
 
       if (this.syncEnabled) {
           // If this is a sync instance, we want to make sure that it calculates synchronously.
-          this.iterationsSoFar = 0;
+          iterationsSoFar = 0;
       }
 
       const instanceId = this.instanceQueue[0];
@@ -268,12 +271,19 @@ class BFS {
       }
 
       const searchNode = instance.openList.pop();
+
+      
+      // No more node to search
+      if (!searchNode) {
+        return;
+      }
       
       // Handles the case where we have found the destination
       if (instance.endX === searchNode.x && instance.endY === searchNode.y) {
         console.log(instance)
         // creating path
-        const path = [];
+        // TODO: fix type
+        const path:any[] = [];
         path.push({x: searchNode.x, y: searchNode.y});
         let parent = searchNode.parent;
         while (parent!=null) {
